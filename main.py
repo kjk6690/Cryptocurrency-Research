@@ -3,7 +3,7 @@ from download_latest_block_to_file import *
 import json
 
 download_latest_block_to_file()
-G = draw_graph_from_file('block_724371.adjlist',circular=True)
+G = draw_graph_from_file('data/block_724371.adjlist', circular=True)
 max_deg = 0
 max_deg_node = -2
 for (node, deg) in G.degree():
