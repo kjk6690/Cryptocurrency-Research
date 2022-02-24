@@ -58,7 +58,9 @@ def download_latest_block_to_file():
                     for addr in np.append(input_addr,output_addr):
                         try: num_of_tx[addr] += 1
                         except:num_of_tx[addr] = 1
+        # Write Graph adjacency List to File
         nx.write_adjlist(G, "block_"+height+".adjlist")
+        # Write other measures to json file
         with open("block_"+height+".json", "w") as outfile:
             data = dict(zip(['num_of_tx', 'tot_txs' 'tot_transferred'],
                            [num_of_tx, 'tot_txs', tot_transferred]))
