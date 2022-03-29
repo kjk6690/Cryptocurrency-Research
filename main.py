@@ -1,16 +1,8 @@
-from draw_graph_from_file import *
-from download_latest_block_to_file import *
-from analyze_blocks import *
-import json
+from toolbox import *
 
-analyze_blocks()
+if __name__ == "__main__":
+    bpd = 144 # number of blocks per day on average
+    # blockhash = get_latest_block_hash()
+    download_n_blocks('0000000000000000000521bdfff05eb8e3f9b9c5c172e9a0b651498a1028b61b', bpd)
 
-# download_latest_block_to_file()
-# G = draw_graph_from_file('data/block_724784.adjlist', circular=True,create_using=nx.DiGraph)
 
-# Read data from .json file
-# with open('block_724371.json', 'r') as openfile:
-#     # Reading from json file
-#     json_object = json.load(openfile)
-#
-# print(json_object)
