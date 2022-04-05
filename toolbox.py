@@ -1,8 +1,6 @@
 import requests # Gets website JSON information
 import networkx as nx # Used for graphs
-import json # Used to write to JSON file
 import numpy as np # Used for adding arrays together
-from varname import nameof
 import os
 import matplotlib.pyplot as plt
 import statistics as stats
@@ -18,26 +16,39 @@ def get_latest_block_hash():
     response = requests.get(url + "latestblock")
     if response.status_code == 200: # If request is successful
         return response.json()['hash'] # Return blockhash
+    else: raise Exception("Could not get_latest_block_hash")
 
 def get_block(blockhash):
     """
-    Get block old_data given a blockhash
+    Get block data given a blockhash
     :param blockhash: the hash for the block to get old_data of
     :return: dictionary containing block info (including transaction list)
     """
     response = requests.get(url + "rawblock/" + blockhash)
     if response.status_code == 200:  # If request is successful, continue
         return response.json() # Return block
+    else: raise Exception("Could not get_block from {:s}".format(blockhash))
 
-def get_tx(tx_hash):
+def get_block_from_height(height):
     """
-    Get transaction old_data
-    :param tx_hash: hash for this specific transaction
-    :return: dictionary of transaction old_data
+    Get block data given a block's height
+    :param height: distance of block from genesis block
+    :return: dictionary containing block info (including transaction list)
     """
-    response = requests.get(url + "rawtx/" + tx_hash)
+    response = requests.get(url + "/block-height/0" + str(height)+ "?format=json")
     if response.status_code == 200:  # If request is successful, continue
-        return response.json() # Return tx
+        return response.json()['blocks'][0] # Return block
+    else: raise Exception("Could not get_block_from_height {:d}".format(height))
+# This function is never used, since the data retrieved is encapsulated within the block data
+# def get_tx(tx_hash):
+#     """
+#     Get transaction old_data
+#     :param tx_hash: hash for this specific transaction
+#     :return: dictionary of transaction old_data
+#     """
+#     response = requests.get(url + "rawtx/" + tx_hash)
+#     if response.status_code == 200:  # If request is successful, continue
+#         return response.json() # Return tx
 
 def get_nth_prev_block(blockhash, n):
     """
@@ -77,58 +88,58 @@ def create_transaction_CBG(tx_details):
     CBG.add_edges_from(np.transpose([np.tile(input_addr, len(output_addr)), np.repeat(output_addr, len(input_addr))]))
     return CBG
 
-def create_block_graph(block, progress_updates=True):
+def create_block_graph(block):
     """
     Create networkX graph from block old_data
     :param block: block old_data containing transactions
-    :param progress_updates: if True, prints progress updates
     :return: transaction graph for the given block
     """
     G = nx.DiGraph()
     txs = block['tx']
-
-    num_tx = len(txs)
     counter = 1
 
     for tx in txs:
-        if progress_updates:
-            print("{:3.2f}%".format(counter*100/num_tx))
-            try:
-                tx_details = get_tx(tx['hash'])
-                CBG = create_transaction_CBG(tx_details)
-                G.add_nodes_from(CBG)
-                G.add_edges_from(CBG.edges())
-            except:
-                print("Error @ tx {:s}, block {:s} ".format(tx['hash'], block['hash']))
-            counter += 1
+        try:
+            CBG = create_transaction_CBG(tx)
+            G.add_nodes_from(CBG)
+            G.add_edges_from(CBG.edges())
+        except:
+            print("Error @ tx {:s}, block {:s} ".format(tx['hash'], block['hash']))
+        counter += 1
     return G
 
 
-def download_n_blocks(first_block_hash, n, progress_updates=True):
+def download_n_blocks(first_block, n, progress_updates=True, use_hash=False):
     """
     Creates a file with transaction graphs of the last n blocks on the blockchain
     This saves to a file after every block to prevent data loss from errors
     File format: "block_{height}_{i}"
     where height is the height of the first block on the blockchain
     and i is the iteration that this function has saved thus far
-    :param first_block_hash: the block hash of the highest block to pull from
+    :param first_block: the block hash of the highest block to pull from
     :param n: number of blocks to pull from
     :param progress_updates: if True, prints progress updates
+    :param use_hash: If true, first_block is the hash. If False it is the first block data itself
     """
     G = nx.DiGraph()
 
-    block_hash = first_block_hash
-    block = get_block(block_hash)
+    if use_hash:
+        block_hash = first_block
+        block = get_block(block_hash)
+    else:
+        block = first_block
+        block_hash = block['hash']
+
     height = str(block['height'])
 
     print("first block hash:", block_hash)
     nx.write_adjlist(G,"./data/block_"+height+"_0.adjlist")
     for i in range(0,n):
         if progress_updates:
-            print("{:d} blocks processed out of {:d} ".format(i,n))
-            print("block hash {:s}".format(block_hash))
+            print('\n' * 10)  # clear screen
+            print("{:d} blocks processed out of {:d} from height {:s}".format(i,n, height))
         try:
-            subgraph = create_block_graph(block, progress_updates=progress_updates)
+            subgraph = create_block_graph(block)
             G = nx.read_adjlist("./data/block_"+height+"_"+str(i)+".adjlist")
             G.add_nodes_from(subgraph)
             G.add_edges_from(subgraph.edges())
